@@ -15,7 +15,7 @@ from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense
 import numpy as np
 from io import BytesIO
-import plotly as px
+import plotly.express as px
 
 
 def help_button(help_text, button_text="ℹ️ Ayuda"):
