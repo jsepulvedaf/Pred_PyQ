@@ -123,6 +123,7 @@ with st.sidebar:
          3. Las columnas de presiones deben empezar con la letra P (por ejemplo: P_AZP, P_pto_Critico, o P1).
          4. Las columnas de caudales deben empezar con la letra C (por ejemplo: C1, Caudal1).
         """)
+    st.image("formato.png", caption="ejemplo de configuracion archivo")
     show_instructions = st.checkbox("Conceptos factor multiplicador Z")
     
     if show_instructions:
