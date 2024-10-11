@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+
 """
 Created on Thu Oct  3 08:21:19 2024
 
@@ -50,9 +51,17 @@ def elimina_outliers_y_zeros(df, columnas, threshold):
         # Reemplaza outliers y valores en 0 por vacíos (NaN)
         df_clean[col] = df_clean[col].where((col_zscore.abs() < threshold) & (df_clean[col] != 0), np.nan)
     return df_clean  # Retorna solo el dataframe limpiado
-
+def imputar_con_promedio(df, variable):
+    for i in range(len(df)):
+        if pd.isna(df.loc[i, variable]):
+            # Obtiene los 10 valores inmediatamente anteriores, si existen
+            prev_values = df[variable].iloc[max(0, i-10):i]
+            # Imputa el valor con el promedio de los valores anteriores si no están vacíos
+            if not prev_values.isna().all():
+                df.loc[i, variable] = prev_values.mean()
+    return df
 # Función para predecir los datos faltantes
-def predecir_datos_faltantes(df_prediccion, model, scaler, variable_pred, feature_cols):
+def predecir_e_imputar(df_prediccion, model, scaler, variable_pred, feature_cols):
     df_pred = df_prediccion.copy()
 
     # Normalizar las columnas de presiones y caudales
@@ -78,6 +87,9 @@ def predecir_datos_faltantes(df_prediccion, model, scaler, variable_pred, featur
 
             # Imputar las predicciones en los valores NaN del DataFrame original
             df_prediccion.loc[valores_faltantes, variable_pred] = predicciones
+
+        # Después de predecir, imputar los valores que aún son NaN con el promedio de los 10 valores anteriores
+        df_prediccion = imputar_con_promedio(df_prediccion, variable_pred)
 
     return df_prediccion
 
@@ -182,28 +194,31 @@ if uploaded_file is not None:
         
         
     st.header('Entrenar Red neuronal para variable seleccionada')
+    # Ajuste en la sección donde se ejecuta la predicción e imputación
     if st.button('Entrenar red neuronal para predecir e imputación'):
         st.write(f"Entrenando la red neuronal para predecir {variable_pred}...")
-
+    
         model = Sequential([
             Dense(64, activation='relu', input_shape=(X_train.shape[1],)),
             Dense(64, activation='relu'),
-            Dense(32, activation='relu'),
+            Dense(32, activation='relu'), 
             Dense(1)
         ])
-
+    
         model.compile(optimizer='adam', loss='mean_squared_error')
         history = model.fit(X_train, y_train, epochs=50, batch_size=32, validation_split=0.2, verbose=0)
         loss = model.evaluate(X_test, y_test, verbose=0)
         st.write(f'Pérdida (MSE) en el conjunto de prueba: {loss}')
-
+    
         st.session_state['model'] = model
         st.session_state['scaler'] = scaler
         st.session_state['variable_pred'] = variable_pred
         st.session_state['feature_cols'] = feature_cols
         st.session_state['all_cols'] = all_cols
+    
+        # Imputación de los datos faltantes
+        df_prediccion_imputed = predecir_e_imputar(df_prediccion.copy(), model, scaler, variable_pred, feature_cols)
 
-        df_prediccion_imputed = predecir_datos_faltantes(df_prediccion.copy(), model, scaler, variable_pred, feature_cols)
 
         html_temp = """ <div style= background-color:#c9ffcb;padding: 10px;  P {color:WHITE;}><h4> CURVA DE APRENDIZAJE </h4> </div>"""
         st.markdown(html_temp, unsafe_allow_html=True)
@@ -252,4 +267,3 @@ if uploaded_file is not None:
             mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
         )
         st.write("Desarrollado por **Julián M. Sepúlveda**. Contacto: [jsepulvedaf@gmail.com](mailto:jsepulvedaf@gmail.com)")
-
